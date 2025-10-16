@@ -45,6 +45,10 @@ class CameraRecordingState:
 
 
 class Recorder:
+    """
+    Manage recording sessions and per-camera writer state.
+    """
+
     def __init__(
         self,
         record_dir: Path | None = None,
@@ -71,6 +75,9 @@ class Recorder:
         self._context.set_session(None)
 
     def handle_frame(self, index: int, frame: Frame, fps: float) -> None:
+        """
+        Persist ``frame`` when recording is active for the camera.
+        """
         with self._lock:
             state = self._states.setdefault(index, CameraRecordingState())
             if not self._context.flag.is_set():

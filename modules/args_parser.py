@@ -11,6 +11,10 @@ class ArgsResult:
 
 
 class ArgsParser:
+    """
+    Parse simple CLI arguments controlling device count and masking.
+    """
+
     def __init__(
         self,
         default_max_devices: int,
@@ -20,6 +24,9 @@ class ArgsParser:
         self.default_mask: set[int] = set(default_mask or set())
 
     def parse(self, argv: list[str]) -> ArgsResult:
+        """
+        Interpret ``argv`` and return the desired runtime configuration.
+        """
         if len(argv) > 2:
             print("Usage: python main.py [max_devices]")
             return ArgsResult(

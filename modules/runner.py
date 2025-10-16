@@ -7,32 +7,39 @@ from typing import cast
 
 import cv2
 
-from detector import Detector
-from recorder import Frame, Recorder
-from shower import Shower
+from .detector import Detector
+from .recorder import Frame, Recorder
+from .shower import Shower
 
 DEFAULT_MAX_DEVICES = 10
 
 
 class Runner:
+    """
+    Coordinate capture threads, UI updates, and recording control.
+    """
+
     def __init__(
         self,
-        detecter: Detector,
+        detector: Detector,
         recorder: Recorder,
         shower: Shower,
         default_max_devices: int = DEFAULT_MAX_DEVICES,
     ) -> None:
-        self.detecter: Detector = detecter
+        self.detector: Detector = detector
         self.recorder: Recorder = recorder
         self.shower: Shower = shower
         self.default_max_devices: int = default_max_devices
 
     def run(self, max_devices: int | None = None, mask: set[int] | None = None) -> int:
-        backend = self.detecter.choose_backend()
+        """
+        Spin up workers and process UI events until shutdown.
+        """
+        backend = self.detector.choose_backend()
         effective_max_devices = (
             max_devices if max_devices is not None else self.default_max_devices
         )
-        detected_ids = self.detecter.detect_cameras(effective_max_devices, backend)
+        detected_ids = self.detector.detect_cameras(effective_max_devices, backend)
 
         mask_set = mask or set()
         if mask_set:

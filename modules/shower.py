@@ -11,6 +11,10 @@ Frame = NDArray[np.uint8]
 
 
 class Shower:
+    """
+    Compose tiled camera previews and handle on-screen overlays.
+    """
+
     def __init__(
         self,
         window_title: str = "Multi-Camera",
@@ -31,6 +35,9 @@ class Shower:
         rows: int,
         cols: int,
     ) -> Frame:
+        """
+        Build a tiled mosaic covering the provided camera IDs.
+        """
         tile_w, tile_h = self.tile_size
         blank: Frame = np.zeros((tile_h, tile_w, 3), dtype=np.uint8)
         tiles: list[Frame] = []
