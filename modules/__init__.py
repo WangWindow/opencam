@@ -1,8 +1,9 @@
 from .args_parser import ArgsParser, ArgsResult
 from .detector import Detector
 from .recorder import Frame, Recorder, RecordingContext
-from .runner import DEFAULT_MAX_DEVICES, Runner
+from .runner import Runner
 from .shower import Shower
+from .task import Task, TaskExecutionError, TaskManager, TaskType
 
 __all__ = [
     "ArgsParser",
@@ -11,7 +12,10 @@ __all__ = [
     "Frame",
     "Recorder",
     "RecordingContext",
-    "DEFAULT_MAX_DEVICES",
     "Runner",
     "Shower",
+    "Task",
+    "TaskExecutionError",
+    "TaskManager",
+    "TaskType",
 ]

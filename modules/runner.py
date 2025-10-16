@@ -10,6 +10,7 @@ import cv2
 from .detector import Detector
 from .recorder import Frame, Recorder
 from .shower import Shower
+from .task import Task, TaskExecutionError, TaskManager
 
 DEFAULT_MAX_DEVICES = 10
 
@@ -39,7 +40,9 @@ class Runner:
         effective_max_devices = (
             max_devices if max_devices is not None else self.default_max_devices
         )
-        detected_ids = self.detector.detect_cameras(effective_max_devices, backend)
+        detected_ids, active_backend = self.detector.detect_cameras(
+            effective_max_devices, backend
+        )
 
         mask_set = mask or set()
         if mask_set:
@@ -58,24 +61,21 @@ class Runner:
         frames: dict[int, Frame | None] = {index: None for index in camera_ids}
         lock = threading.Lock()
         stop_event = threading.Event()
-
-        workers = [
-            threading.Thread(
+        tasks = [
+            Task(
                 target=self._camera_worker,
-                args=(index, stop_event, frames, lock, backend),
+                args=(index, stop_event, frames, lock, active_backend),
                 name=f"Camera-{index}",
-                daemon=True,
             )
             for index in camera_ids
         ]
-
-        for worker in workers:
-            worker.start()
+        manager = TaskManager(tasks)
 
         rows, cols = self.shower.grid_shape(len(camera_ids))
         context = self.recorder.recording_context
 
         try:
+            manager.start_all()
             while not stop_event.is_set():
                 with lock:
                     composite = self.shower.compose(camera_ids, frames, rows, cols)
@@ -84,31 +84,20 @@ class Runner:
                     self.shower.annotate_recording(composite)
 
                 key = self.shower.show(composite)
-                if key in (27, ord("q"), ord("Q")):
-                    if context.flag.is_set():
-                        self.recorder.stop_session()
+                if self._process_keypress(key):
                     stop_event.set()
                     break
-                if key in (ord("r"), ord("R")):
-                    if not context.flag.is_set():
-                        session = time.strftime("%Y%m%d_%H%M%S")
-                        self.recorder.start_session(session)
-                        print(f"Recording started: session {session}")
-                    else:
-                        print("Recording already active.")
-                if key in (ord("s"), ord("S")):
-                    if context.flag.is_set():
-                        self.recorder.stop_session()
-                        print("Recording stopped.")
-                    else:
-                        print("Recording is not running.")
         except KeyboardInterrupt:
             stop_event.set()
         finally:
+            stop_event.set()
             if context.flag.is_set():
                 self.recorder.stop_session()
-            for worker in workers:
-                worker.join(timeout=1.0)
+            manager.join_all(timeout=1.5)
+            try:
+                manager.raise_failures()
+            except TaskExecutionError as exc:
+                print(exc)
             self.recorder.shutdown()
             self.shower.close()
 
@@ -150,3 +139,33 @@ class Runner:
         finally:
             capture.release()
             self.recorder.finalize_camera(index, "shutdown")
+
+    def _process_keypress(self, key: int) -> bool:
+        if key in (-1, 255):
+            return False
+
+        context_flag = self.recorder.recording_context.flag
+
+        if key in (27, ord("q"), ord("Q")):
+            if context_flag.is_set():
+                self.recorder.stop_session()
+            return True
+
+        if key in (ord("r"), ord("R")):
+            if context_flag.is_set():
+                print("Recording already active.")
+                return False
+            session = time.strftime("%Y%m%d_%H%M%S")
+            self.recorder.start_session(session)
+            print(f"Recording started: session {session}")
+            return False
+
+        if key in (ord("s"), ord("S")):
+            if context_flag.is_set():
+                self.recorder.stop_session()
+                print("Recording stopped.")
+            else:
+                print("Recording is not running.")
+            return False
+
+        return False

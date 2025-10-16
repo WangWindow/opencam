@@ -2,15 +2,14 @@ from __future__ import annotations
 
 import sys
 
-from modules import ArgsParser, Detector, Recorder, Runner, Shower, DEFAULT_MAX_DEVICES
+from modules import ArgsParser, Detector, Recorder, Runner, Shower
 
 
 def main(argv: list[str]) -> int:
     """
     Entry point wiring concrete module implementations together.
     """
-    parser = ArgsParser(default_max_devices=DEFAULT_MAX_DEVICES, default_mask={0})
-    result = parser.parse(argv)
+    result = ArgsParser().parse(argv)
     if result.exit_code is not None:
         return result.exit_code
 
